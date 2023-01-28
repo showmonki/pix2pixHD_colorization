@@ -1,15 +1,21 @@
 import torch
 
 def create_model(opt):
-    if opt.model == 'pix2pixHD':
-        from .pix2pixHD_model import Pix2PixHDModel, InferenceModel
+    if opt.model in ['pix2pixHD','colorization']:
+        from .pix2pixHD_model import Pix2PixHDModel, InferenceModel, ColorizationModel
         if opt.isTrain:
-            model = Pix2PixHDModel()
+            if opt.model == 'colorization':
+                model = ColorizationModel()
+            else:
+                model = Pix2PixHDModel()
         else:
-            model = InferenceModel()
+            if opt.model == 'colorization':
+                model = ColorizationModel()
+            else:
+                model = InferenceModel()
     else:
-    	from .ui_model import UIModel
-    	model = UIModel()
+        from .ui_model import UIModel
+        model = UIModel()
     model.initialize(opt)
     if opt.verbose:
         print("model [%s] was created" % (model.name()))

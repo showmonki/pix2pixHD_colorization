@@ -5,11 +5,16 @@ from data.base_data_loader import BaseDataLoader
 def CreateDataset(opt):
     dataset = None
     from data.aligned_dataset import AlignedDataset
-    dataset = AlignedDataset()
+    from data.colorization_dataset import ColorizationDataset
+    if opt.model == 'colorization':
+        dataset = ColorizationDataset(opt)
+    else:
+        dataset = AlignedDataset()
+        dataset.initialize(opt)
 
     print("dataset [%s] was created" % (dataset.name()))
-    dataset.initialize(opt)
     return dataset
+
 
 class CustomDatasetDataLoader(BaseDataLoader):
     def name(self):

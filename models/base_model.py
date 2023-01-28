@@ -26,6 +26,10 @@ class BaseModel(torch.nn.Module):
     def get_image_paths(self):
         pass
 
+    def compute_visuals(self):
+        """Calculate additional output images for visdom and HTML visualization"""
+        pass
+
     def optimize_parameters(self):
         pass
 

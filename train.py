@@ -15,7 +15,13 @@ import util.util as util
 from util.visualizer import Visualizer
 
 opt = TrainOptions().parse()
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+opt.device = device
 iter_path = os.path.join(opt.checkpoints_dir, opt.name, 'iter.txt')
+if opt.model == 'colorization':
+    opt.label_nc = 0
+    opt.input_nc = 1
+    opt.output_nc = 2
 if opt.continue_train:
     try:
         start_epoch, epoch_iter = np.loadtxt(iter_path , delimiter=',', dtype=int)
@@ -40,9 +46,9 @@ print('#training images = %d' % dataset_size)
 
 model = create_model(opt)
 visualizer = Visualizer(opt)
-if opt.fp16:    
+if opt.fp16:
     from apex import amp
-    model, [optimizer_G, optimizer_D] = amp.initialize(model, [model.optimizer_G, model.optimizer_D], opt_level='O1')             
+    model, [optimizer_G, optimizer_D] = amp.initialize(model, [model.optimizer_G, model.optimizer_D], opt_level='O1')
     model = torch.nn.DataParallel(model, device_ids=opt.gpu_ids)
 else:
     optimizer_G, optimizer_D = model.module.optimizer_G, model.module.optimizer_D
@@ -106,9 +112,18 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
 
         ### display output images
         if save_fake:
-            visuals = OrderedDict([('input_label', util.tensor2label(data['label'][0], opt.label_nc)),
-                                   ('synthesized_image', util.tensor2im(generated.data[0])),
-                                   ('real_image', util.tensor2im(data['image'][0]))])
+            if opt.model=='colorization':
+                # model.module.compute_visuals()
+                real_A = data['label'][0]
+                real_B = data['image'][0]
+                visuals = OrderedDict([
+                                        # ('input_label', util.tensor2label(real_A, opt.label_nc)),
+                                       ('synthesized_image', np.uint8(model.module.lab2rgb(real_A,generated.data[0]))),  # fake B
+                                       ('real_image', np.uint8(model.module.lab2rgb(real_A, real_B)))])  # real B
+            else:
+                visuals = OrderedDict([('input_label', util.tensor2label(data['label'][0], opt.label_nc)),
+                                       ('synthesized_image', util.tensor2im(generated.data[0])),
+                                       ('real_image', util.tensor2im(data['image'][0]))])
             visualizer.display_current_results(visuals, epoch, total_steps)
 
         ### save latest model

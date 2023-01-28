@@ -5,6 +5,7 @@ from torch.autograd import Variable
 from util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
+from skimage import color  # used for lab2rgb
 
 class Pix2PixHDModel(BaseModel):
     def name(self):
@@ -185,12 +186,14 @@ class Pix2PixHDModel(BaseModel):
                         self.criterionFeat(pred_fake[i][j], pred_real[i][j].detach()) * self.opt.lambda_feat
                    
         # VGG feature matching loss
-        loss_G_VGG = 0
+        loss_G_method = 0
         if not self.opt.no_vgg_loss:
-            loss_G_VGG = self.criterionVGG(fake_image, real_image) * self.opt.lambda_feat
-        
+            loss_G_method = self.criterionVGG(fake_image, real_image) * self.opt.lambda_feat
+        if self.opt.l1_loss:
+            self.criterionL1 = torch.nn.L1Loss()
+            loss_G_method = self.criterionL1(fake_image, real_image) * self.opt.lambda_feat
         # Only return the fake_B image if necessary to save BW
-        return [ self.loss_filter( loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake ), None if not infer else fake_image ]
+        return [ self.loss_filter( loss_G_GAN, loss_G_GAN_Feat, loss_G_method, loss_D_real, loss_D_fake ), None if not infer else fake_image ]
 
     def inference(self, label, inst, image=None):
         # Encode Inputs        
@@ -302,3 +305,56 @@ class InferenceModel(Pix2PixHDModel):
         return self.inference(label, inst)
 
         
+class ColorizationModel(Pix2PixHDModel):
+
+    def encode_input(self, label_map, inst_map=None, real_image=None, feat_map=None, infer=False):
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        input_label = label_map.data.to(device)
+        input_label = Variable(input_label, volatile=infer)
+
+        # real images for training
+        if real_image is not None:
+            real_image = Variable(real_image.data.to(device))
+
+        return input_label, inst_map, real_image, feat_map
+
+    def lab2rgb(self, L, AB):
+        """Convert an Lab tensor image to a RGB numpy output
+        Parameters:
+            L  (1-channel tensor array): L channel images (range: [-1, 1], torch tensor array)
+            AB (2-channel tensor array):  ab channel images (range: [-1, 1], torch tensor array)
+
+        Returns:
+            rgb (RGB numpy image): rgb output images  (range: [0, 255], numpy array)
+        """
+        AB2 = AB * 110.0
+        L2 = (L + 1.0) * 50.0
+        Lab = torch.cat([L2.cuda(), AB2.cuda()], dim=0)
+        Lab = Lab.data.cpu().float().numpy()
+        Lab = np.transpose(Lab.astype(np.float64), (1, 2, 0))
+        rgb = color.lab2rgb(Lab) * 255
+        return rgb
+
+    def inference(self, label, inst, image=None):
+        # Encode Inputs
+        image = Variable(image) if image is not None else None
+        input_label, inst_map, real_image, _ = self.encode_input(Variable(label), Variable(inst), image, infer=True)
+
+        # Fake Generation
+        if self.use_features:
+            if self.opt.use_encoded_image:
+                # encode the real image to get feature map
+                feat_map = self.netE.forward(real_image, inst_map)
+            else:
+                # sample clusters from precomputed features
+                feat_map = self.sample_features(inst_map)
+            input_concat = torch.cat((input_label, feat_map), dim=1)
+        else:
+            input_concat = input_label
+
+        if torch.__version__.startswith('0.4'):
+            with torch.no_grad():
+                fake_image = self.netG.forward(input_concat)
+        else:
+            fake_image = self.netG.forward(input_concat)
+        return fake_image
