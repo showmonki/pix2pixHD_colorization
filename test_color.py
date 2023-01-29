@@ -1,4 +1,6 @@
 import os
+import torch
+
 from collections import OrderedDict
 from torch.autograd import Variable
 from options.test_options import TestOptions
@@ -7,7 +9,6 @@ from models.models import create_model
 import util.util as util
 from util.visualizer import Visualizer
 from util import html
-import torch
 import numpy as np
 from PIL import Image
 
@@ -22,13 +23,13 @@ if opt.model == 'colorization':
     opt.input_nc = 1
     opt.output_nc = 2
 
-
 data_loader = CreateDataLoader(opt)
 dataset = data_loader.load_data()
 visualizer = Visualizer(opt)
 # create website
 web_dir = os.path.join(opt.results_dir, opt.name, '%s_%s' % (opt.phase, opt.which_epoch))
 webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.which_epoch))
+
 
 # test
 if not opt.engine and not opt.onnx:
@@ -42,7 +43,7 @@ if not opt.engine and not opt.onnx:
         print(model)
 else:
     from run_engine import run_trt_engine, run_onnx
-    
+
 for i, data in enumerate(dataset):
     if i >= opt.how_many:
         break

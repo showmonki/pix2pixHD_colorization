@@ -327,9 +327,10 @@ class ColorizationModel(Pix2PixHDModel):
         Returns:
             rgb (RGB numpy image): rgb output images  (range: [0, 255], numpy array)
         """
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         AB2 = AB * 110.0
         L2 = (L + 1.0) * 50.0
-        Lab = torch.cat([L2.cuda(), AB2.cuda()], dim=0)
+        Lab = torch.cat([L2.to(device), AB2.to(device)], dim=0)
         Lab = Lab.data.cpu().float().numpy()
         Lab = np.transpose(Lab.astype(np.float64), (1, 2, 0))
         rgb = color.lab2rgb(Lab) * 255
