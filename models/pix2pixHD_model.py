@@ -76,8 +76,8 @@ class Pix2PixHDModel(BaseModel):
             self.criterionFeat = torch.nn.L1Loss()
             if not opt.no_vgg_loss:             
                 self.criterionVGG = networks.VGGLoss(self.gpu_ids)
-                
-        
+                self.criterionVGG.vgg.slice1[0] = torch.nn.Conv2d(2, 64, kernel_size=(3, 3), padding=(1, 1))
+
             # Names so we can breakout loss
             self.loss_names = self.loss_filter('G_GAN','G_GAN_Feat','G_VGG','D_real', 'D_fake')
 

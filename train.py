@@ -14,6 +14,7 @@ from models.models import create_model
 import util.util as util
 from util.visualizer import Visualizer
 
+print('Start at: ', time.ctime())
 opt = TrainOptions().parse()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 opt.device = device
@@ -154,3 +155,4 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
     ### linearly decay learning rate after certain iterations
     if epoch > opt.niter:
         model.module.update_learning_rate()
+print('End at: ', time.ctime())

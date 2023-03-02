@@ -49,10 +49,10 @@ for i, data in enumerate(dataset):
         break
     if opt.data_type == 16:
         data['label'] = data['label'].half()
-        data['inst']  = data['inst'].half()
+        data['inst'] = data['inst'].half()
     elif opt.data_type == 8:
         data['label'] = data['label'].uint8()
-        data['inst']  = data['inst'].uint8()
+        data['inst'] = data['inst'].uint8()
     if opt.export_onnx:
         print ("Exporting to ONNX: ", opt.export_onnx)
         assert opt.export_onnx.endswith("onnx"), "Export model file should end with .onnx"
